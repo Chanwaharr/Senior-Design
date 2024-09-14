@@ -112,8 +112,6 @@ void initializeCard() {
 }
  
 void writeHeader() {
-  int change = 0;
-  int hi = 0
   myFile = SD.open(fileName, FILE_WRITE);
   if (myFile) {
     myFile.println("Lat,Long, Time, Light, Temp, Humidity, Sound");
