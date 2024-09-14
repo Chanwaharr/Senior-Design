@@ -8,7 +8,7 @@
 #include <TinyGPS++.h>
 #include <WiFi.h>
 #include <ESP32Firebase.h>
- 
+
 #define WIFI_SSID  "Eddie"
 #define WIFI_PASSWORD "Mopp3tt!"
 #define API_KEY "AIzaSyCs7OKUVsWg3hRFSYSiHQGc5xeTp1RyTv8"
@@ -112,6 +112,8 @@ void initializeCard() {
 }
  
 void writeHeader() {
+  int change = 0;
+  int hi = 0
   myFile = SD.open(fileName, FILE_WRITE);
   if (myFile) {
     myFile.println("Lat,Long, Time, Light, Temp, Humidity, Sound");
