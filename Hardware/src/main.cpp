@@ -15,6 +15,7 @@
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
  
 Firebase firebase(DATABASE_URL);
+// Whats up
  
 unsigned long sendDataPrevMillis = 0;
 
