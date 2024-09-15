@@ -66,6 +66,31 @@ float convertToLux(float lightHz) {
   float intercept = 50.0; // Example intercept, adjust based on calibration
   return slope * lightHz + intercept;
 }
+
+void initializeCard() {
+  Serial.print("Beginning initialization of SD card: ");
+   while(true) {
+    if (SD.begin(CS_PIN)) {
+      Serial.println("Initialization done.");
+      break; // Exit the loop once the SD card initializes successfully
+    } else {
+      Serial.println("Initialization failed, retrying...");
+      delay(1000); // Wait for a bit before retrying
+    }
+  }
+ 
+ 
+}
+ 
+void writeHeader() {
+  myFile = SD.open(fileName, FILE_WRITE);
+  if (myFile) {
+    myFile.println("Lat,Long, Time, Light, Temp, Humidity, Sound");
+    myFile.close();
+  } else {
+    Serial.println("Error opening " + String(fileName));
+  }
+}
  
 void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -93,31 +118,6 @@ void setup() {
     Serial.println("\nFile exists. Will append to it.\n");
   } else {
     writeHeader(); // Only write header if file does not exist
-  }
-}
- 
-void initializeCard() {
-  Serial.print("Beginning initialization of SD card: ");
-   while(true) {
-    if (SD.begin(CS_PIN)) {
-      Serial.println("Initialization done.");
-      break; // Exit the loop once the SD card initializes successfully
-    } else {
-      Serial.println("Initialization failed, retrying...");
-      delay(1000); // Wait for a bit before retrying
-    }
-  }
- 
- 
-}
- 
-void writeHeader() {
-  myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile) {
-    myFile.println("Lat,Long, Time, Light, Temp, Humidity, Sound");
-    myFile.close();
-  } else {
-    Serial.println("Error opening " + String(fileName));
   }
 }
  
