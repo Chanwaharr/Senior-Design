@@ -20,7 +20,7 @@ unsigned long sendDataPrevMillis = 0;
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
- 
+
 #define OLED_RESET 4
  
 #define RXD2 3
@@ -91,68 +91,112 @@ void writeHeader() {
     Serial.println("Error opening " + String(fileName));
   }
 }
+
+void connectToWiFi() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("Attempting to connect to WiFi: ");
+  if(WiFi.status() == WL_CONNECTED){
+    Serial.println("WiFi connected");
+  }
+  else{
+    Serial.println("WiFi connection failed");
+  }
+}
  
 void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.display();
   delay(2000);
- 
+
   Serial.begin(115200);
-  while(!Serial){}; // Wait for serial port to connect
- 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("Connecting to WiFi: ");
-  while(WiFi.status() != WL_CONNECTED){
-    Serial.println("."); delay(300);
-  }
-  Serial.println("WiFi Connected");
- 
- 
+
+  // Attempt to connect to WiFi, but don't block the rest of the code if it fails
+  connectToWiFi();
+
   neogps.begin(9600, SERIAL_8N1, RXD2, TXD2);
- 
   dht.begin();
   delay(1000);
   initializeCard();
- 
-  if(SD.exists(fileName)){
+
+  if (SD.exists(fileName)) {
     Serial.println("\nFile exists. Will append to it.\n");
   } else {
     writeHeader(); // Only write header if file does not exist
   }
 }
- 
-void loop() {
-  // Check if enough time has passed to send data again
-  if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
-    sendDataPrevMillis = millis(); // Update the last sent time
- 
-    int lightLux = analogRead(SENSOR_PIN); // Read digital signal from LM393
-    float lightHz = lightLux / 1000.0; // Convert to frequency in Hz (for Lux conversion)
-    float temperature = dht.readTemperature(true);
-    float humidity = dht.readHumidity();
-    float soundVoltage = analogRead(SOUND_PIN) * (5.0 / 1023.0); // Convert analog to voltage (assuming 5V reference)
-    float sounddB = convertToDecibels(soundVoltage); // Convert sound intensity to decibels
- 
-    boolean newData = false;
-    for (unsigned long start = millis(); millis() - start < 1000;) {
-      while (neogps.available()) {
-        if (gps.encode(neogps.read())) {
-          newData = true;
-        }
+
+void logSensorDataToSD() {
+  // Logic for reading sensor data and logging to the SD card
+  int lightLux = analogRead(SENSOR_PIN); 
+  float lightHz = lightLux / 1000.0;
+  float temperature = dht.readTemperature(true);
+  float humidity = dht.readHumidity();
+  float soundVoltage = analogRead(SOUND_PIN) * (5.0 / 1023.0); 
+  float sounddB = convertToDecibels(soundVoltage);
+
+  boolean newData = false;
+  for (unsigned long start = millis(); millis() - start < 1000;) {
+    while (neogps.available()) {
+      if (gps.encode(neogps.read())) {
+        newData = true;
       }
     }
- 
-    float latitude = gps.location.isValid() ? gps.location.lat() : 0;
-    float longitude = gps.location.isValid() ? gps.location.lng() : 0;
+  }
 
-    int BatLife = analogRead(VOLTAGE_DIVIDER);
+  float latitude = gps.location.isValid() ? gps.location.lat() : 0;
+  float longitude = gps.location.isValid() ? gps.location.lng() : 0;
 
- 
-    // Begin by clearing the display
+  // SD Card logging
+  myFile = SD.open(fileName, FILE_WRITE);
+  if (myFile && newData) {
+    myFile.seek(myFile.size());
+    myFile.print(millis());
+    if (gps.location.isValid()) {
+      myFile.print(",");
+      myFile.print(latitude, 6);
+      myFile.print(",");
+      myFile.println(longitude, 6);
+    } else {
+      myFile.println(",No GPS Data");
+    }
+    myFile.print(",");
+    myFile.print(lightLux);
+    myFile.print(",");
+    myFile.print(temperature, 2);
+    myFile.print(",");
+    myFile.print(humidity, 2);
+    myFile.print(",");
+    myFile.print(sounddB);
+    myFile.close();
+  } else if (!myFile) {
+    Serial.println("Error opening " + String(fileName));
+  }
+}
+
+void sendDataToFirebase() {
+  // Logic for sending data to Firebase
+  float temperature = dht.readTemperature(true);
+  float humidity = dht.readHumidity();
+  float latitude = gps.location.isValid() ? gps.location.lat() : 0;
+  float longitude = gps.location.isValid() ? gps.location.lng() : 0;
+
+  firebase.setFloat("Environment/Temperature", temperature);
+  firebase.setFloat("Environment/Humidity", humidity);
+  firebase.setFloat("GPS/Latitude", latitude);
+  firebase.setFloat("GPS/Longitude", longitude);
+}
+
+void updateDisplay() {
+  // Read sensor data
+  int BatLife = analogRead(VOLTAGE_DIVIDER);
+  float temperature = dht.readTemperature(true);
+  float humidity = dht.readHumidity();
+
+  // Begin by clearing the display
   display.clearDisplay();
   display.setTextSize(1);      // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.setCursor(0,0);     // Start at top-left corner
+  display.setCursor(0, 0);     // Start at top-left corner
 
   // Determine battery level in quarters
   if (BatLife >= 2445) {
@@ -164,56 +208,48 @@ void loop() {
   } else {
     display.println("Battery level: 0% - 25%");
   }
- 
+
   // Print time since start
   display.print("Time: ");
   display.println(millis() / 1000);
- 
+
   // Print temperature
   display.print("Temp: ");
   display.print(temperature, 1);
   display.println(" F");
- 
+
   // Print humidity
   display.print("Humidity: ");
   display.print(humidity, 1);
   display.println("%");
- 
+
   // Display the content
   display.display();
- 
-   // Firebase updates for temperature, humidity, latitude, and longitude
-    firebase.setFloat("Environment/Temperature", temperature);
-    firebase.setFloat("Environment/Humidity", humidity);
-    firebase.setFloat("GPS/Latitude", latitude);
-    firebase.setFloat("GPS/Longitude", longitude);
-   
-    // Continue with SD card logging and display updates here...
-    myFile = SD.open(fileName, FILE_WRITE);
-    if (myFile && newData) {
-      myFile.seek(myFile.size());
-      myFile.print(millis());
-      if (gps.location.isValid()) {
-        myFile.print(",");
-        myFile.print(gps.location.lat(), 6);
-        myFile.print(",");
-        myFile.println(gps.location.lng(), 6);
-      } else {
-        myFile.println(",No GPS Data");
+}
+
+void loop() {
+  static unsigned long lastReconnectAttempt = 0;
+
+  // Check if enough time has passed to log data
+  if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
+    sendDataPrevMillis = millis(); // Update the last sent time
+
+    // Log data from sensors to SD card
+    logSensorDataToSD();
+
+    // Update the OLED display with the latest sensor data
+    updateDisplay();
+
+    // Check WiFi status
+    if (WiFi.status() == WL_CONNECTED) {
+      // If WiFi is connected, send data to Firebase
+      sendDataToFirebase();
+    } else {
+      // If WiFi is not connected, attempt to reconnect periodically
+      if (millis() - lastReconnectAttempt > 5000) { // Attempt to reconnect every 10 seconds
+        lastReconnectAttempt = millis();
+        connectToWiFi();
       }
-      myFile.print(",");
-      myFile.print(lightLux);
-      Serial.println(lightLux);
-      myFile.print(",");
-      myFile.print(temperature, 2);
-      myFile.print(",");
-      myFile.print(humidity, 2);
-      myFile.print(",");
-      myFile.print(sounddB);
-      Serial.println(sounddB);
-      myFile.close();
-    } else if (!myFile) {
-      Serial.println("Error opening " + String(fileName));
     }
   }
 }
