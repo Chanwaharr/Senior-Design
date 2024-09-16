@@ -15,7 +15,6 @@
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
  
 Firebase firebase(DATABASE_URL);
-// Whats up
  
 unsigned long sendDataPrevMillis = 0;
 
@@ -27,7 +26,6 @@ unsigned long sendDataPrevMillis = 0;
 #define RXD2 3
 #define TXD2 1
 
- 
 HardwareSerial neogps(1);
 TinyGPSPlus gps;
  
