@@ -8,6 +8,7 @@
 #include <TinyGPS++.h>
 #include <WiFi.h>
 #include <ESP32Firebase.h>
+#include <TimeLib.h>
 
 #define WIFI_SSID  "Eddie"
 #define WIFI_PASSWORD "Mopp3tt!"
