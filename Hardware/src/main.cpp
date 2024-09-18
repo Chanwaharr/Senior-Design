@@ -39,11 +39,11 @@ static const unsigned char PROGMEM logo_bmp[] =
  
 DHT dht(35, DHT22); //This is for the temp/humidity sensor
 const int CS_PIN = 5; //This is for the SD card
-const int SENSOR_PIN = 39; // This if for the light sensor
-const int SOUND_PIN = 36;
-const int VOLTAGE_DIVIDER = 34;
-const int PEOPLE_COUNT_UP = 25;
-const int PEOPLE_COUNT_DOWN = 26;
+const int SENSOR_PIN = 39; // This is for the light sensor
+const int SOUND_PIN = 36; //for the sound sensor
+const int VOLTAGE_DIVIDER = 34; //Voltage divider for bat life
+const int PEOPLE_COUNT_UP = 25; //Increment Push Button
+const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
  
 File myFile;
 const char* fileName = "/test.txt"; // File name
