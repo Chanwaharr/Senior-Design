@@ -146,11 +146,30 @@ void logSensorDataToSD() {
   float latitude = gps.location.isValid() ? gps.location.lat() : 0;
   float longitude = gps.location.isValid() ? gps.location.lng() : 0;
 
+  // Prepare time and date strings
+  char timeStr[10] = "00:00:00";  // Default if no GPS data
+  char dateStr[11] = "00-00-0000"; // Default if no GPS data
+
+  if (gps.time.isValid()) {
+    sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
+  }
+
+  if (gps.date.isValid()) {
+    sprintf(dateStr, "%02d-%02d-%04d", gps.date.day(), gps.date.month(), gps.date.year());
+  }
+
   // SD Card logging
   myFile = SD.open(fileName, FILE_WRITE);
   if (myFile && newData) {
     myFile.seek(myFile.size());
     myFile.print(millis());
+
+    // Print date and time before latitude and longitude
+    myFile.print(",");
+    myFile.print(dateStr);
+    myFile.print(" ");
+    myFile.print(timeStr);
+
     if (gps.location.isValid()) {
       myFile.print(",");
       myFile.print(latitude, 6);
@@ -159,6 +178,7 @@ void logSensorDataToSD() {
     } else {
       myFile.println(",No GPS Data");
     }
+    
     myFile.print(",");
     myFile.print(lightLux);
     myFile.print(",");
@@ -209,9 +229,15 @@ void updateDisplay() {
     display.println("Battery level: 0% - 25%");
   }
 
-  // Print time since start
-  display.print("Time: ");
-  display.println(millis() / 1000);
+  // Print time from GPS
+  if (gps.time.isValid()) {
+    char timeStr[10];
+    sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
+    display.print("Time: ");
+    display.println(timeStr);
+  } else {
+    display.println("Time: No GPS Data");
+  }
 
   // Print temperature
   display.print("Temp: ");
