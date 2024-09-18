@@ -48,7 +48,7 @@ const int PEOPLE_COUNT_DOWN = 26;
 File myFile;
 const char* fileName = "/test.txt"; // File name
 
-int peopleCount = 0; //this is the variable to keep count of the people
+int PeopleCounter = 0; //this is the variable to keep count of the people
  
 // Constants for sound sensor sensitivity and reference voltage
 const float SOUND_SENSITIVITY = 0.1; 
@@ -194,7 +194,7 @@ void logSensorDataToSD() {
     myFile.print(sounddB);
     myFile.close();
     myFile.print(",");
-    myFile.print(peopleCount);
+    myFile.print(PeopleCounter);
   } else if (!myFile) {
     Serial.println("Error opening " + String(fileName));
   }
@@ -211,7 +211,10 @@ void sendDataToFirebase() {
   firebase.setFloat("Environment/Humidity", humidity);
   firebase.setFloat("GPS/Latitude", latitude);
   firebase.setFloat("GPS/Longitude", longitude);
-  
+  firebase.setInt("PeopleCounter", PeopleCounter);
+
+  int firebase_count = firebase.getInt("PeopleCounter/PeopleCounter");
+  PeopleCounter = firebase_count;
 }
 
 void updateDisplay() {
@@ -287,13 +290,11 @@ void loop() {
     }
   }
     if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
-    peopleCount++;
+    PeopleCounter++;
   }
   if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
-    if (peopleCount > 0) {
-      peopleCount--;
+    if (PeopleCounter > 0) {
+      PeopleCounter--;
     }
   }
 }
-
-//Testing testing 123
