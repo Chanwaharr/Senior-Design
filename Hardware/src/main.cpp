@@ -206,15 +206,17 @@ void sendDataToFirebase() {
   float humidity = dht.readHumidity();
   float latitude = gps.location.isValid() ? gps.location.lat() : 0;
   float longitude = gps.location.isValid() ? gps.location.lng() : 0;
-
+  //Send Data to Firebase
   firebase.setFloat("Environment/Temperature", temperature);
   firebase.setFloat("Environment/Humidity", humidity);
   firebase.setFloat("GPS/Latitude", latitude);
   firebase.setFloat("GPS/Longitude", longitude);
   firebase.setInt("PeopleCounter", PeopleCounter);
-
-  int firebase_count = firebase.getInt("PeopleCounter/PeopleCounter");
-  PeopleCounter = firebase_count;
+  //Receive Data from Firebase
+  int firebase_count = firebase.getInt("PeopleCounter");
+  if (firebase_count >= 0) { 
+    PeopleCounter = firebase_count;
+  }
 }
 
 void updateDisplay() {
@@ -266,6 +268,7 @@ void updateDisplay() {
 
 void loop() {
   static unsigned long lastReconnectAttempt = 0;
+  static unsigned long lastButtonPress = 0; // For debounce
 
   // Check if enough time has passed to log data
   if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
@@ -283,18 +286,27 @@ void loop() {
       sendDataToFirebase();
     } else {
       // If WiFi is not connected, attempt to reconnect periodically
-      if (millis() - lastReconnectAttempt > 5000) { // Attempt to reconnect every 10 seconds
+      if (millis() - lastReconnectAttempt > 5000) {
         lastReconnectAttempt = millis();
         connectToWiFi();
       }
     }
   }
+
+  // Debounce the buttons (ignoring presses within 300ms)
+  if (millis() - lastButtonPress > 300) {
     if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
-    PeopleCounter++;
-  }
-  if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
-    if (PeopleCounter > 0) {
-      PeopleCounter--;
+      PeopleCounter++;
+      sendDataToFirebase(); // Sync with Firebase immediately
+      lastButtonPress = millis();
+    }
+
+    if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
+      if (PeopleCounter > 0) {
+        PeopleCounter--;
+        sendDataToFirebase(); // Sync with Firebase immediately
+        lastButtonPress = millis();
+      }
     }
   }
 }
