@@ -42,7 +42,10 @@ const int CS_PIN = 5; //This is for the SD card
 const int SENSOR_PIN = 39; // This if for the light sensor
 const int SOUND_PIN = 36;
 const int VOLTAGE_DIVIDER = 34;
- 
+const int PEOPLE_COUNT_UP = 25;
+const int PEOPLE_COUNT_DOWN = 26; 
+
+// Variables for card data
 File myFile;
 const char* fileName = "/test.txt"; // File name
 
@@ -124,6 +127,8 @@ void setup() {
   } else {
     writeHeader(); // Only write header if file does not exist
   }
+  pinMode(PEOPLE_COUNT_UP, INPUT_PULLUP);
+  pinMode(PEOPLE_COUNT_DOWN, INPUT_PULLUP);
 }
 
 void logSensorDataToSD() {
@@ -279,6 +284,14 @@ void loop() {
         lastReconnectAttempt = millis();
         connectToWiFi();
       }
+    }
+  }
+    if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
+    peopleCount++;
+  }
+  if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
+    if (peopleCount > 0) {
+      peopleCount--;
     }
   }
 }
