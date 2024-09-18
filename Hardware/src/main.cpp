@@ -45,7 +45,8 @@ const int VOLTAGE_DIVIDER = 34;
  
 File myFile;
 const char* fileName = "/test.txt"; // File name
- 
+
+int peopleCount = 0; //this is the variable to keep count of the people
  
 // Constants for sound sensor sensitivity and reference voltage
 const float SOUND_SENSITIVITY = 0.1; 
@@ -178,7 +179,7 @@ void logSensorDataToSD() {
     } else {
       myFile.println(",No GPS Data");
     }
-    
+
     myFile.print(",");
     myFile.print(lightLux);
     myFile.print(",");
@@ -188,6 +189,8 @@ void logSensorDataToSD() {
     myFile.print(",");
     myFile.print(sounddB);
     myFile.close();
+    myFile.print(",");
+    myFile.print(peopleCount);
   } else if (!myFile) {
     Serial.println("Error opening " + String(fileName));
   }
