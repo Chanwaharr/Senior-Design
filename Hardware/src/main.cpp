@@ -293,20 +293,15 @@ void loop() {
     }
   }
 
-  // Debounce the buttons (ignoring presses within 300ms)
-  if (millis() - lastButtonPress > 300) {
-    if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
-      PeopleCounter++;
-      sendDataToFirebase(); // Sync with Firebase immediately
-      lastButtonPress = millis();
-    }
+  if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
+    PeopleCounter++;
+    sendDataToFirebase(); // Sync with Firebase immediately
+  }
 
-    if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
-      if (PeopleCounter > 0) {
-        PeopleCounter--;
-        sendDataToFirebase(); // Sync with Firebase immediately
-        lastButtonPress = millis();
-      }
+  if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
+    if (PeopleCounter > 0) {
+      PeopleCounter--;
+      sendDataToFirebase(); // Sync with Firebase immediately
     }
   }
 }
