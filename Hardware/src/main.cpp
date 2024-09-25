@@ -48,6 +48,7 @@ const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
 File myFile;
 const char* fileName = "/Data.txt"; // File name
 
+//This is for the pushbuttons
 int PeopleCounter = 0;
 int incrementButtonState = 0;
 int decrementButtonState = 0;
@@ -265,7 +266,7 @@ void updateDisplay() {
   display.print("Humidity: ");
   display.print(humidity, 1);
   display.println("%");
-
+  
   display.print("People: ");
   display.println(PeopleCounter);
 
