@@ -179,9 +179,9 @@ void logSensorDataToSD() {
       myFile.print(",");
       myFile.print(latitude, 6);
       myFile.print(",");
-      myFile.println(longitude, 6);
+      myFile.print(longitude, 6);
     } else {
-      myFile.println(",No GPS Data");
+      myFile.print(",No GPS Data");
     }
 
     myFile.print(",");
