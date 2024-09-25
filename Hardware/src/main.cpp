@@ -262,6 +262,9 @@ void updateDisplay() {
   display.print(humidity, 1);
   display.println("%");
 
+  display.print("People: ");
+  display.println(PeopleCounter);
+
   // Display the content
   display.display();
 }
