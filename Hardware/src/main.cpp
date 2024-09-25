@@ -48,7 +48,11 @@ const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
 File myFile;
 const char* fileName = "/Data.txt"; // File name
 
-int PeopleCounter = 0; //this is the variable to keep count of the people
+int PeopleCounter = 0;
+int incrementButtonState = 0;
+int decrementButtonState = 0;
+int lastIncrementButtonState = 0; 
+int lastDecrementButtonState = 0;
  
 // Constants for sound sensor sensitivity and reference voltage
 const float SOUND_SENSITIVITY = 0.1; 
@@ -126,8 +130,8 @@ void setup() {
   } else {
     writeHeader(); // Only write header if file does not exist
   }
-  pinMode(PEOPLE_COUNT_UP, INPUT_PULLUP);
-  pinMode(PEOPLE_COUNT_DOWN, INPUT_PULLDOWN);
+  pinMode(PEOPLE_COUNT_UP, INPUT);
+  pinMode(PEOPLE_COUNT_DOWN, INPUT);
 }
 
 void logSensorDataToSD() {
@@ -271,7 +275,8 @@ void updateDisplay() {
 
 void loop() {
   static unsigned long lastReconnectAttempt = 0;
-  static unsigned long lastButtonPress = 0; // For debounce
+  incrementButtonState = digitalRead(PEOPLE_COUNT_UP);
+  decrementButtonState = digitalRead(PEOPLE_COUNT_DOWN);
 
   // Check if enough time has passed to log data
   if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
@@ -296,15 +301,17 @@ void loop() {
     }
   }
 
-  if (!digitalRead(PEOPLE_COUNT_UP)) { // Increment button pressed
+  if (incrementButtonState == HIGH && lastIncrementButtonState == LOW) {
     PeopleCounter++;
-    sendDataToFirebase(); // Sync with Firebase immediately
+    sendDataToFirebase();
   }
 
-  if (!digitalRead(PEOPLE_COUNT_DOWN)) { // Decrement button pressed
+  if (decrementButtonState == HIGH && lastDecrementButtonState == LOW) {
     if (PeopleCounter > 0) {
       PeopleCounter--;
-      sendDataToFirebase(); // Sync with Firebase immediately
+      sendDataToFirebase();
     }
   }
+  lastIncrementButtonState = incrementButtonState;
+  lastDecrementButtonState = decrementButtonState;
 }
