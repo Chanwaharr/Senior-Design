@@ -218,7 +218,7 @@ void sendDataToFirebase() {
   firebase.setInt("PeopleCounter", PeopleCounter);
   //Receive Data from Firebase
   int firebase_count = firebase.getInt("PeopleCounter");
-  if (firebase_count >= 0) { 
+  if (firebase_count != PeopleCounter) { 
     PeopleCounter = firebase_count;
   }
 }
