@@ -46,7 +46,7 @@ const int PEOPLE_COUNT_UP = 25; //Increment Push Button
 const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
  
 File myFile;
-const char* fileName = "/test.txt"; // File name
+const char* fileName = "/Data.txt"; // File name
 
 int PeopleCounter = 0; //this is the variable to keep count of the people
  
