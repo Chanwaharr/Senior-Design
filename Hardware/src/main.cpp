@@ -10,8 +10,8 @@
 #include <ESP32Firebase.h>
 #include <TimeLib.h>
 
-#define WIFI_SSID  "Eddie"
-#define WIFI_PASSWORD "Mopp3tt!"
+#define WIFI_SSID  "WhiteSky-332"
+#define WIFI_PASSWORD "74976532"
 #define API_KEY "AIzaSyCs7OKUVsWg3hRFSYSiHQGc5xeTp1RyTv8"
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
  
@@ -42,19 +42,20 @@ const int CS_PIN = 5; //This is for the SD card
 const int SENSOR_PIN = 39; // This is for the light sensor
 const int SOUND_PIN = 36; //for the sound sensor
 const int VOLTAGE_DIVIDER = 34; //Voltage divider for bat life
-const int PEOPLE_COUNT_UP = 25; //Increment Push Button
+const int PEOPLE_COUNT_UP = 27; //Increment Push Button
 const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
  
 File myFile;
 const char* fileName = "/Data.txt"; // File name
 
-//This is for the pushbuttons
+// Variables for button states and counter
+int button1_State = 0, button2_State = 0;
 int PeopleCounter = 0;
-int incrementButtonState = 0;
-int decrementButtonState = 0;
-int lastIncrementButtonState = 0; 
-int lastDecrementButtonState = 0;
- 
+int prestate = 0;  // Used to detect button press transitions
+
+// Other global variables
+unsigned long lastReconnectAttempt = 0;
+
 // Constants for sound sensor sensitivity and reference voltage
 const float SOUND_SENSITIVITY = 0.1; 
 const float REFERENCE_VOLTAGE = 5.0; 
@@ -267,72 +268,66 @@ void updateDisplay() {
 }
 
 void loop() {
-  static unsigned long lastReconnectAttempt = 0;
-  static unsigned long lastDebounceTime = 0;  // Used for debouncing buttons
-  const unsigned long debounceDelay = 50;  // 50 ms debounce delay
+  // Read the state of the pushbuttons
+  button1_State = digitalRead(PEOPLE_COUNT_UP);
+  button2_State = digitalRead(PEOPLE_COUNT_DOWN);
 
-  // Read button states (HIGH when pressed due to pull-down resistor configuration)
-  incrementButtonState = digitalRead(PEOPLE_COUNT_UP);
-  decrementButtonState = digitalRead(PEOPLE_COUNT_DOWN);
+  // Check if increment button is pressed and prestate is 0
+  if (button1_State == HIGH && prestate == 0) {
+    PeopleCounter++;  // Increment the counter
+    Serial.print("Counter incremented: ");
+    Serial.println(PeopleCounter);  // Debugging
+    updateDisplay();  // Update the display immediately after incrementing
 
-  // Check if enough time has passed to log data
+    // Send data to Firebase if connected
+    if (WiFi.status() == WL_CONNECTED) {
+      sendDataToFirebase();
+    }
+
+    prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
+  }
+
+  // Check if decrement button is pressed and prestate is 0
+  else if (button2_State == HIGH && prestate == 0) {
+    if (PeopleCounter > 0) {  // Prevent counter from going below 0
+      PeopleCounter--;  // Decrement the counter
+      Serial.print("Counter decremented: ");
+      Serial.println(PeopleCounter);  // Debugging
+      updateDisplay();  // Update the display immediately after decrementing
+
+      // Send data to Firebase if connected
+      if (WiFi.status() == WL_CONNECTED) {
+        sendDataToFirebase();
+      }
+
+      prestate = 1;  // Set prestate to avoid counting multiple times for a single press
+    }
+  }
+
+  // Reset the prestate if both buttons are released
+  else if (button1_State == LOW && button2_State == LOW) {
+    prestate = 0;  // Reset prestate when both buttons are released
+  }
+
+  // Check if enough time has passed to log data to the SD card
   if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
     sendDataPrevMillis = millis(); // Update the last sent time
 
     // Log data from sensors to SD card
     logSensorDataToSD();
 
-    // Update the OLED display with the latest sensor data
+    // Update the display again
     updateDisplay();
 
     // Check WiFi status
     if (WiFi.status() == WL_CONNECTED) {
-      // If WiFi is connected, send data to Firebase
       sendDataToFirebase();
     } else {
-      // If WiFi is not connected, attempt to reconnect periodically
+      // Attempt to reconnect every 5 seconds
       if (millis() - lastReconnectAttempt > 5000) {
         lastReconnectAttempt = millis();
         connectToWiFi();
       }
     }
   }
-
-  // Debouncing for the increment button
-  if (incrementButtonState != lastIncrementButtonState) {
-    lastDebounceTime = millis();  // Reset debounce timer
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (incrementButtonState == HIGH && lastIncrementButtonState == LOW) {  // Button is pressed when HIGH (pull-down configuration)
-      PeopleCounter++;  // Increment counter
-      // Check WiFi status
-      if (WiFi.status() == WL_CONNECTED) {
-        // If WiFi is connected, send data to Firebase
-        sendDataToFirebase();
-      }
-    }
-  }
-
-  // Debouncing for the decrement button
-  if (decrementButtonState != lastDecrementButtonState) {
-    lastDebounceTime = millis();  // Reset debounce timer
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (decrementButtonState == HIGH && lastDecrementButtonState == LOW) {  // Button is pressed when HIGH (pull-down configuration)
-      if (PeopleCounter > 0) {
-        PeopleCounter--;  // Decrement counter if greater than 0
-        // Check WiFi status
-        if (WiFi.status() == WL_CONNECTED) {
-          // If WiFi is connected, send data to Firebase
-          sendDataToFirebase();
-        }
-      }
-    }
-  }
-
-  // Store the current states as last states for the next loop iteration
-  lastIncrementButtonState = incrementButtonState;
-  lastDecrementButtonState = decrementButtonState;
 }
