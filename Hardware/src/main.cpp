@@ -57,7 +57,8 @@ unsigned long lastReconnectAttempt = 0;
 
 // Constants for sound sensor sensitivity and reference voltage
 const float SOUND_SENSITIVITY = 0.1; 
-const float REFERENCE_VOLTAGE = 5.0; 
+const float REFERENCE_VOLTAGE = 5.0;
+bool userChangedCounter = false; 
  
  
 // Function to convert light frequency (Hz) to Lux
@@ -197,23 +198,35 @@ void logSensorDataToSD() {
 }
 
 void sendDataToFirebase() {
-  // Logic for sending data to Firebase
+  // Receive the current PeopleCounter from Firebase
+  int firebase_count = firebase.getInt("PeopleCounter");
+
+  // Logic for comparing the Firebase and local values
+  if (firebase_count != PeopleCounter) {
+    if (userChangedCounter) {
+      // The user changed the PeopleCounter via buttons, so we update Firebase
+      firebase.setInt("PeopleCounter", PeopleCounter);
+    } else {
+      // No user change, so we sync the local counter to Firebase value
+      PeopleCounter = firebase_count;
+    }
+  }
+
+  // After synchronization, reset the userChangedCounter flag
+  userChangedCounter = false;
+
+  // Send other sensor data to Firebase
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   float latitude = gps.location.isValid() ? gps.location.lat() : 0;
   float longitude = gps.location.isValid() ? gps.location.lng() : 0;
-  //Send Data to Firebase
+
   firebase.setFloat("Environment/Temperature", temperature);
   firebase.setFloat("Environment/Humidity", humidity);
   firebase.setFloat("GPS/Latitude", latitude);
   firebase.setFloat("GPS/Longitude", longitude);
-  firebase.setInt("PeopleCounter", PeopleCounter);
-  //Receive Data from Firebase
-  int firebase_count = firebase.getInt("PeopleCounter");
-  if (firebase_count != PeopleCounter) { 
-    PeopleCounter = firebase_count;
-  }
 }
+
 
 void updateDisplay() {
   // Read sensor data
@@ -267,6 +280,7 @@ void updateDisplay() {
 }
 
 void loop() {
+  // *** Pushbutton logic ***
   // Read the state of the pushbuttons
   button1_State = digitalRead(PEOPLE_COUNT_UP);
   button2_State = digitalRead(PEOPLE_COUNT_DOWN);
@@ -274,8 +288,12 @@ void loop() {
   // Check if increment button is pressed and prestate is 0
   if (button1_State == HIGH && prestate == 0) {
     PeopleCounter++;  // Increment the counter
+    userChangedCounter = true;  // Flag that the user changed the PeopleCounter
     Serial.print("Counter incremented: ");
     Serial.println(PeopleCounter);  // Debugging
+    // Immediately update the display after incrementing
+    updateDisplay();
+
     // Send data to Firebase if connected
     if (WiFi.status() == WL_CONNECTED) {
       sendDataToFirebase();
@@ -288,8 +306,12 @@ void loop() {
   else if (button2_State == HIGH && prestate == 0) {
     if (PeopleCounter > 0) {  // Prevent counter from going below 0
       PeopleCounter--;  // Decrement the counter
+      userChangedCounter = true;  // Flag that the user changed the PeopleCounter
       Serial.print("Counter decremented: ");
       Serial.println(PeopleCounter);  // Debugging
+      // Immediately update the display after decrementing
+      updateDisplay();
+
       // Send data to Firebase if connected
       if (WiFi.status() == WL_CONNECTED) {
         sendDataToFirebase();
@@ -304,14 +326,14 @@ void loop() {
     prestate = 0;  // Reset prestate when both buttons are released
   }
 
-  // Check if enough time has passed to log data to the SD card
+  // *** Logging data to SD card and updating display every 5 seconds ***
   if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
     sendDataPrevMillis = millis(); // Update the last sent time
 
     // Log data from sensors to SD card
     logSensorDataToSD();
 
-    // Update the display again
+    // Update the display with the latest information
     updateDisplay();
 
     // Check WiFi status
