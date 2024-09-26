@@ -26,7 +26,7 @@ static const int RXPin = 25;
 static const int TXPin = 26;
 
 TinyGPSPlus gps;
-HardwareSerial GPSSerial(2);
+HardwareSerial GPSSerial(1);
  
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  
@@ -307,8 +307,6 @@ void loop() {
   if (button1_State == HIGH && prestate == 0) {
     PeopleCounter++;  // Increment the counter
     userChangedCounter = true;
-    Serial.print("Counter incremented: ");
-    Serial.println(PeopleCounter);  // Print the updated counter value
     prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
   }
 
@@ -316,8 +314,6 @@ void loop() {
   else if (button2_State == HIGH && prestate == 0) {
     PeopleCounter--;  // Decrement the counter
     userChangedCounter = true;
-    Serial.print("Counter decremented: ");
-    Serial.println(PeopleCounter);  // Print the updated counter value
     prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
   }
 
