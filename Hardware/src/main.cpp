@@ -51,8 +51,13 @@ int button1_State = 0, button2_State = 0;
 int PeopleCounter = 0;
 int prestate = 0;  // Used to detect button press transitions
 
+const unsigned long sensor1Interval = 500;  // 5 seconds
+unsigned long previousMillisSensor1 = 0;     // to store last time sensor1 was read
+
+// Debouncing variables
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;  // 50 milliseconds debounce delay
 // Other global variables
-unsigned long sendDataPrevMillis = 0;
 unsigned long lastReconnectAttempt = 0;
 
 // Constants for sound sensor sensitivity and reference voltage
@@ -107,7 +112,6 @@ void connectToWiFi() {
 void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.display();
-  delay(2000);
 
   Serial.begin(115200);
 
@@ -116,7 +120,6 @@ void setup() {
 
   GPSSerial.begin(9600, SERIAL_8N1, RX, TX);
   dht.begin();
-  delay(1000);
   initializeCard();
 
   if (SD.exists(fileName)) {
@@ -280,71 +283,46 @@ void updateDisplay() {
 }
 
 void loop() {
-  // *** Pushbutton logic ***
+
+  unsigned long currentMillis = millis(); // Get current time
+
+  // Sensor 1 - Record data every 5 seconds
+  if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
+    previousMillisSensor1 = currentMillis;  // Update last read time
+     // Update the display and log sensor data to SD card
+    updateDisplay();
+    logSensorDataToSD();
+
+    // If WiFi is connected, send data to Firebase
+    if (WiFi.status() == WL_CONNECTED) {
+      sendDataToFirebase();
+    }
+  }
+ 
   // Read the state of the pushbuttons
   button1_State = digitalRead(PEOPLE_COUNT_UP);
   button2_State = digitalRead(PEOPLE_COUNT_DOWN);
 
-  // Check if increment button is pressed and prestate is 0
+  // Check if button 1 is pressed and the prestate is 0 (button was not previously pressed)
   if (button1_State == HIGH && prestate == 0) {
     PeopleCounter++;  // Increment the counter
-    userChangedCounter = true;  // Flag that the user changed the PeopleCounter
+    userChangedCounter = true;
     Serial.print("Counter incremented: ");
-    Serial.println(PeopleCounter);  // Debugging
-    // Immediately update the display after incrementing
-    updateDisplay();
-
-    // Send data to Firebase if connected
-    if (WiFi.status() == WL_CONNECTED) {
-      sendDataToFirebase();
-    }
-
+    Serial.println(PeopleCounter);  // Print the updated counter value
     prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
   }
 
-  // Check if decrement button is pressed and prestate is 0
+  // Check if button 2 is pressed and the prestate is 0
   else if (button2_State == HIGH && prestate == 0) {
-    if (PeopleCounter > 0) {  // Prevent counter from going below 0
-      PeopleCounter--;  // Decrement the counter
-      userChangedCounter = true;  // Flag that the user changed the PeopleCounter
-      Serial.print("Counter decremented: ");
-      Serial.println(PeopleCounter);  // Debugging
-      // Immediately update the display after decrementing
-      updateDisplay();
-
-      // Send data to Firebase if connected
-      if (WiFi.status() == WL_CONNECTED) {
-        sendDataToFirebase();
-      }
-
-      prestate = 1;  // Set prestate to avoid counting multiple times for a single press
-    }
+    PeopleCounter--;  // Decrement the counter
+    userChangedCounter = true;
+    Serial.print("Counter decremented: ");
+    Serial.println(PeopleCounter);  // Print the updated counter value
+    prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
   }
 
-  // Reset the prestate if both buttons are released
+  // Reset the prestate if both buttons are not pressed
   else if (button1_State == LOW && button2_State == LOW) {
-    prestate = 0;  // Reset prestate when both buttons are released
-  }
-
-  // *** Logging data to SD card and updating display every 5 seconds ***
-  if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
-    sendDataPrevMillis = millis(); // Update the last sent time
-
-    // Log data from sensors to SD card
-    logSensorDataToSD();
-
-    // Update the display with the latest information
-    updateDisplay();
-
-    // Check WiFi status
-    if (WiFi.status() == WL_CONNECTED) {
-      sendDataToFirebase();
-    } else {
-      // Attempt to reconnect every 5 seconds
-      if (millis() - lastReconnectAttempt > 5000) {
-        lastReconnectAttempt = millis();
-        connectToWiFi();
-      }
-    }
+    prestate = 0;
   }
 }
