@@ -24,8 +24,8 @@ unsigned long sendDataPrevMillis = 0;
 
 #define OLED_RESET 4
  
-#define RXD2 3
-#define TXD2 1
+#define RXD2 17
+#define TXD2 16
 
 HardwareSerial neogps(1);
 TinyGPSPlus gps;
@@ -40,7 +40,7 @@ static const unsigned char PROGMEM logo_bmp[] =
 DHT dht(13, DHT22); //This is for the temp/humidity sensor
 const int CS_PIN = 5; //This is for the SD card
 const int SENSOR_PIN = 39; // This is for the light sensor
-const int SOUND_PIN = 2; //for the sound sensor
+const int SOUND_PIN = 36; //for the sound sensor
 const int VOLTAGE_DIVIDER = 34; //Voltage divider for bat life
 const int PEOPLE_COUNT_UP = 25; //Increment Push Button
 const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
@@ -59,14 +59,6 @@ int lastDecrementButtonState = 0;
 const float SOUND_SENSITIVITY = 0.1; 
 const float REFERENCE_VOLTAGE = 5.0; 
  
-// Function to convert sound intensity (analog reading) to decibels
-float convertToDecibels(float soundVoltage) {
-  
-  float voltageInMillivolts = soundVoltage * (5000.0 / 1023.0); // Convert to millivolts
-  float soundPressureLevel = voltageInMillivolts / SOUND_SENSITIVITY; // Convert to sound pressure level
-  // Convert SPL to decibels (dB)
-  return 20 * log10(soundPressureLevel / REFERENCE_VOLTAGE);
-}
  
 // Function to convert light frequency (Hz) to Lux
 float convertToLux(float lightHz) {
@@ -142,7 +134,6 @@ void logSensorDataToSD() {
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN) * (5.0 / 1023.0); 
-  float sounddB = convertToDecibels(soundVoltage);
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -196,7 +187,7 @@ void logSensorDataToSD() {
     myFile.print(",");
     myFile.print(humidity, 2);
     myFile.print(",");
-    myFile.print(sounddB);
+    myFile.print(soundVoltage);
     myFile.close();
     myFile.print(",");
     myFile.print(PeopleCounter);
@@ -229,6 +220,7 @@ void updateDisplay() {
   int BatLife = analogRead(VOLTAGE_DIVIDER);
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
+  float light = analogRead(SENSOR_PIN);
 
   // Begin by clearing the display
   display.clearDisplay();
@@ -276,6 +268,10 @@ void updateDisplay() {
 
 void loop() {
   static unsigned long lastReconnectAttempt = 0;
+  static unsigned long lastDebounceTime = 0;  // Used for debouncing buttons
+  const unsigned long debounceDelay = 50;  // 50 ms debounce delay
+
+  // Read button states (HIGH when pressed due to pull-down resistor configuration)
   incrementButtonState = digitalRead(PEOPLE_COUNT_UP);
   decrementButtonState = digitalRead(PEOPLE_COUNT_DOWN);
 
@@ -302,17 +298,41 @@ void loop() {
     }
   }
 
-  if (incrementButtonState == HIGH && lastIncrementButtonState == LOW) {
-    PeopleCounter++;
-    sendDataToFirebase();
+  // Debouncing for the increment button
+  if (incrementButtonState != lastIncrementButtonState) {
+    lastDebounceTime = millis();  // Reset debounce timer
   }
 
-  if (decrementButtonState == HIGH && lastDecrementButtonState == LOW) {
-    if (PeopleCounter > 0) {
-      PeopleCounter--;
-      sendDataToFirebase();
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (incrementButtonState == HIGH && lastIncrementButtonState == LOW) {  // Button is pressed when HIGH (pull-down configuration)
+      PeopleCounter++;  // Increment counter
+      // Check WiFi status
+      if (WiFi.status() == WL_CONNECTED) {
+        // If WiFi is connected, send data to Firebase
+        sendDataToFirebase();
+      }
     }
   }
+
+  // Debouncing for the decrement button
+  if (decrementButtonState != lastDecrementButtonState) {
+    lastDebounceTime = millis();  // Reset debounce timer
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (decrementButtonState == HIGH && lastDecrementButtonState == LOW) {  // Button is pressed when HIGH (pull-down configuration)
+      if (PeopleCounter > 0) {
+        PeopleCounter--;  // Decrement counter if greater than 0
+        // Check WiFi status
+        if (WiFi.status() == WL_CONNECTED) {
+          // If WiFi is connected, send data to Firebase
+          sendDataToFirebase();
+        }
+      }
+    }
+  }
+
+  // Store the current states as last states for the next loop iteration
   lastIncrementButtonState = incrementButtonState;
   lastDecrementButtonState = decrementButtonState;
 }
