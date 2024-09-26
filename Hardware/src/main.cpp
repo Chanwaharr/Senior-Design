@@ -16,19 +16,17 @@
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
  
 Firebase firebase(DATABASE_URL);
- 
-unsigned long sendDataPrevMillis = 0;
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
 #define OLED_RESET 4
  
-#define RXD2 17
-#define TXD2 16
+static const int RXPin = 25;
+static const int TXPin = 26;
 
-HardwareSerial neogps(1);
 TinyGPSPlus gps;
+HardwareSerial GPSSerial(2);
  
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  
@@ -43,7 +41,7 @@ const int SENSOR_PIN = 39; // This is for the light sensor
 const int SOUND_PIN = 36; //for the sound sensor
 const int VOLTAGE_DIVIDER = 34; //Voltage divider for bat life
 const int PEOPLE_COUNT_UP = 27; //Increment Push Button
-const int PEOPLE_COUNT_DOWN = 26; //Decrement Push Button
+const int PEOPLE_COUNT_DOWN = 9; //Decrement Push Button
  
 File myFile;
 const char* fileName = "/Data.txt"; // File name
@@ -54,6 +52,7 @@ int PeopleCounter = 0;
 int prestate = 0;  // Used to detect button press transitions
 
 // Other global variables
+unsigned long sendDataPrevMillis = 0;
 unsigned long lastReconnectAttempt = 0;
 
 // Constants for sound sensor sensitivity and reference voltage
@@ -114,7 +113,7 @@ void setup() {
   // Attempt to connect to WiFi, but don't block the rest of the code if it fails
   connectToWiFi();
 
-  neogps.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  GPSSerial.begin(9600, SERIAL_8N1, RX, TX);
   dht.begin();
   delay(1000);
   initializeCard();
@@ -138,8 +137,8 @@ void logSensorDataToSD() {
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
-    while (neogps.available()) {
-      if (gps.encode(neogps.read())) {
+    while (GPSSerial.available()) {
+      if (gps.encode(GPSSerial.read())) {
         newData = true;
       }
     }
@@ -277,8 +276,6 @@ void loop() {
     PeopleCounter++;  // Increment the counter
     Serial.print("Counter incremented: ");
     Serial.println(PeopleCounter);  // Debugging
-    updateDisplay();  // Update the display immediately after incrementing
-
     // Send data to Firebase if connected
     if (WiFi.status() == WL_CONNECTED) {
       sendDataToFirebase();
@@ -293,8 +290,6 @@ void loop() {
       PeopleCounter--;  // Decrement the counter
       Serial.print("Counter decremented: ");
       Serial.println(PeopleCounter);  // Debugging
-      updateDisplay();  // Update the display immediately after decrementing
-
       // Send data to Firebase if connected
       if (WiFi.status() == WL_CONNECTED) {
         sendDataToFirebase();
