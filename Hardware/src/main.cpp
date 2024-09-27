@@ -22,11 +22,11 @@ Firebase firebase(DATABASE_URL);
 
 #define OLED_RESET 4
  
-static const int RXPin = 25;
-static const int TXPin = 26;
+static const int RXPin = 17;
+static const int TXPin = 16;
 
 TinyGPSPlus gps;
-HardwareSerial GPSSerial(1);
+HardwareSerial GPSSerial(2);
  
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  
@@ -50,13 +50,11 @@ const char* fileName = "/Data.txt"; // File name
 int button1_State = 0, button2_State = 0;
 int PeopleCounter = 0;
 int prestate = 0;  // Used to detect button press transitions
-
 const unsigned long sensor1Interval = 500;  // 5 seconds
 unsigned long previousMillisSensor1 = 0;     // to store last time sensor1 was read
-
-// Debouncing variables
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;  // 50 milliseconds debounce delay
+
 // Other global variables
 unsigned long lastReconnectAttempt = 0;
 
@@ -73,11 +71,22 @@ float convertToLux(float lightHz) {
   return slope * lightHz + intercept;
 }
 
+void writeHeader() {
+  myFile = SD.open(fileName, FILE_WRITE);
+  if (myFile) {
+    myFile.println("Date,Time,Lat,Long,Light,Temp,Humidity,Sound,People");
+    myFile.close();
+  } else {
+    Serial.println("Error opening " + String(fileName));
+  }
+}
+
 void initializeCard() {
   Serial.print("Beginning initialization of SD card: ");
    while(true) {
     if (SD.begin(CS_PIN)) {
       Serial.println("Initialization done.");
+      writeHeader();
       break; // Exit the loop once the SD card initializes successfully
     } else {
       Serial.println("Initialization failed, retrying...");
@@ -86,16 +95,6 @@ void initializeCard() {
   }
  
  
-}
- 
-void writeHeader() {
-  myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile) {
-    myFile.println("Lat,Long, Time, Light, Temp, Humidity, Sound");
-    myFile.close();
-  } else {
-    Serial.println("Error opening " + String(fileName));
-  }
 }
 
 void connectToWiFi() {
@@ -137,7 +136,7 @@ void logSensorDataToSD() {
   float lightHz = lightLux / 1000.0;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  float soundVoltage = analogRead(SOUND_PIN) * (5.0 / 1023.0); 
+  float soundVoltage = analogRead(SOUND_PIN); 
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -165,12 +164,9 @@ void logSensorDataToSD() {
 
   // SD Card logging
   myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile && newData) {
+  if (myFile) {
+    // Print data to the file
     myFile.seek(myFile.size());
-    myFile.print(millis());
-
-    // Print date and time before latitude and longitude
-    myFile.print(",");
     myFile.print(dateStr);
     myFile.print(" ");
     myFile.print(timeStr);
@@ -192,13 +188,16 @@ void logSensorDataToSD() {
     myFile.print(humidity, 2);
     myFile.print(",");
     myFile.print(soundVoltage);
-    myFile.close();
     myFile.print(",");
-    myFile.print(PeopleCounter);
-  } else if (!myFile) {
+    myFile.println(PeopleCounter); // Log PeopleCounter to SD
+
+    myFile.close(); // Always ensure the file is closed
+    Serial.println("Data logged to SD card");
+  } else {
     Serial.println("Error opening " + String(fileName));
   }
 }
+
 
 void sendDataToFirebase() {
   // Receive the current PeopleCounter from Firebase
@@ -237,6 +236,7 @@ void updateDisplay() {
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   float light = analogRead(SENSOR_PIN);
+  float sound = analogRead(SOUND_PIN);
 
   // Begin by clearing the display
   display.clearDisplay();
@@ -277,6 +277,15 @@ void updateDisplay() {
   
   display.print("People: ");
   display.println(PeopleCounter);
+
+  if(WiFi.status() == WL_CONNECTED){
+    display.println("WiFi connected");
+  }
+  else{
+    display.println("WiFi connection failed");
+  }
+
+  
 
   // Display the content
   display.display();
