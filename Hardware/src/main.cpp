@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <HardwareSerial.h>
 #include <SD.h>
 #include <SPI.h>
 #include <DHT.h>
@@ -22,8 +23,8 @@ Firebase firebase(DATABASE_URL);
 
 #define OLED_RESET 4
  
-static const int RXPin = 17;
-static const int TXPin = 16;
+static const int RXPin = 16;
+static const int TXPin = 17;
 
 TinyGPSPlus gps;
 HardwareSerial GPSSerial(2);
