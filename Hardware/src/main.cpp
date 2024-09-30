@@ -27,7 +27,7 @@ static const int RXPin = 16;
 static const int TXPin = 17;
 
 TinyGPSPlus gps;
-HardwareSerial GPSSerial(2);
+HardwareSerial GPSSerial(1);
  
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  
@@ -64,7 +64,6 @@ const float SOUND_SENSITIVITY = 0.1;
 const float REFERENCE_VOLTAGE = 5.0;
 bool userChangedCounter = false; 
  
- 
 // Function to convert light frequency (Hz) to Lux
 float convertToLux(float lightHz) {
   float slope = 10.0; // Example slope, adjust based on calibration
@@ -94,8 +93,6 @@ void initializeCard() {
       delay(1000); // Wait for a bit before retrying
     }
   }
- 
- 
 }
 
 void connectToWiFi() {
@@ -118,7 +115,7 @@ void setup() {
   // Attempt to connect to WiFi, but don't block the rest of the code if it fails
   connectToWiFi();
 
-  GPSSerial.begin(9600, SERIAL_8N1, RX, TX);
+  GPSSerial.begin(115200, SERIAL_8N1, RX, TX);
   dht.begin();
   initializeCard();
 
