@@ -15,60 +15,60 @@
 #define WIFI_PASSWORD "74976532"
 #define API_KEY "AIzaSyCs7OKUVsWg3hRFSYSiHQGc5xeTp1RyTv8"
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
- 
+
 Firebase firebase(DATABASE_URL);
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-
 #define OLED_RESET 4
- 
+
 static const int RXPin = 16;
 static const int TXPin = 17;
 
 TinyGPSPlus gps;
 HardwareSerial GPSSerial(1);
- 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
- 
-static const unsigned char PROGMEM logo_bmp[] =
-{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-};
- 
-DHT dht(13, DHT22); //This is for the temp/humidity sensor
-const int CS_PIN = 5; //This is for the SD card
-const int SENSOR_PIN = 39; // This is for the light sensor
-const int SOUND_PIN = 36; //for the sound sensor
-const int VOLTAGE_DIVIDER = 34; //Voltage divider for bat life
-const int PEOPLE_COUNT_UP = 27; //Increment Push Button
-const int PEOPLE_COUNT_DOWN = 9; //Decrement Push Button
- 
+
+DHT dht(13, DHT22); // Temperature/humidity sensor
+const int CS_PIN = 5; // SD card pin
+const int SENSOR_PIN = 39; // Light sensor
+const int SOUND_PIN = 36; // Sound sensor
+const int VOLTAGE_DIVIDER = 34; // Voltage divider for battery life
+const int PEOPLE_COUNT_UP = 27; // Increment push button
+const int PEOPLE_COUNT_DOWN = 9; // Decrement push button
+
 File myFile;
 const char* fileName = "/Data.txt"; // File name
 
-// Variables for button states and counter
-int button1_State = 0, button2_State = 0;
-int PeopleCounter = 0;
-int prestate = 0;  // Used to detect button press transitions
-const unsigned long sensor1Interval = 500;  // 5 seconds
-unsigned long previousMillisSensor1 = 0;     // to store last time sensor1 was read
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;  // 50 milliseconds debounce delay
+// Global counter for people count
+volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
+const unsigned long sensor1Interval = 500;  // 500 milliseconds (0.5 seconds)
+unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
+bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
+// Debounce time
+const unsigned long debounceDelay = 50;  // 50 milliseconds debounce delay
+volatile unsigned long lastInterruptTime = 0;  // Last time an interrupt occurred
 
-// Other global variables
-unsigned long lastReconnectAttempt = 0;
+// Flags for debouncing using interrupts
+volatile bool button1Pressed = false;
+volatile bool button2Pressed = false;
 
-// Constants for sound sensor sensitivity and reference voltage
-const float SOUND_SENSITIVITY = 0.1; 
-const float REFERENCE_VOLTAGE = 5.0;
-bool userChangedCounter = false; 
- 
-// Function to convert light frequency (Hz) to Lux
-float convertToLux(float lightHz) {
-  float slope = 10.0; // Example slope, adjust based on calibration
-  float intercept = 50.0; // Example intercept, adjust based on calibration
-  return slope * lightHz + intercept;
+// Function to handle button 1 press (increment)
+void IRAM_ATTR handleButton1Press() {
+  unsigned long interruptTime = millis();
+  if (interruptTime - lastInterruptTime > debounceDelay) {
+    button1Pressed = true;  // Set the flag
+    lastInterruptTime = interruptTime;
+  }
+}
+
+// Function to handle button 2 press (decrement)
+void IRAM_ATTR handleButton2Press() {
+  unsigned long interruptTime = millis();
+  if (interruptTime - lastInterruptTime > debounceDelay) {
+    button2Pressed = true;  // Set the flag
+    lastInterruptTime = interruptTime;
+  }
 }
 
 void writeHeader() {
@@ -83,14 +83,14 @@ void writeHeader() {
 
 void initializeCard() {
   Serial.print("Beginning initialization of SD card: ");
-   while(true) {
+  while (true) {
     if (SD.begin(CS_PIN)) {
       Serial.println("Initialization done.");
       writeHeader();
-      break; // Exit the loop once the SD card initializes successfully
+      break;
     } else {
       Serial.println("Initialization failed, retrying...");
-      delay(1000); // Wait for a bit before retrying
+      delay(1000);
     }
   }
 }
@@ -98,43 +98,47 @@ void initializeCard() {
 void connectToWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Attempting to connect to WiFi: ");
-  if(WiFi.status() == WL_CONNECTED){
+  if (WiFi.status() == WL_CONNECTED) {
     Serial.println("WiFi connected");
-  }
-  else{
+  } else {
     Serial.println("WiFi connection failed");
   }
 }
- 
+
 void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.display();
 
   Serial.begin(115200);
 
-  // Attempt to connect to WiFi, but don't block the rest of the code if it fails
+  // Attempt to connect to WiFi
   connectToWiFi();
 
-  GPSSerial.begin(115200, SERIAL_8N1, RX, TX);
+  GPSSerial.begin(115200, SERIAL_8N1, RXPin, TXPin);
   dht.begin();
   initializeCard();
 
   if (SD.exists(fileName)) {
     Serial.println("\nFile exists. Will append to it.\n");
   } else {
-    writeHeader(); // Only write header if file does not exist
+    writeHeader();
   }
+
+  // Set up pins and attach interrupts
   pinMode(PEOPLE_COUNT_UP, INPUT);
   pinMode(PEOPLE_COUNT_DOWN, INPUT);
+  
+  // Attach interrupts to buttons
+  attachInterrupt(digitalPinToInterrupt(PEOPLE_COUNT_UP), handleButton1Press, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PEOPLE_COUNT_DOWN), handleButton2Press, FALLING);
 }
 
 void logSensorDataToSD() {
-  // Logic for reading sensor data and logging to the SD card
-  int lightLux = analogRead(SENSOR_PIN); 
+  int lightLux = analogRead(SENSOR_PIN);
   float lightHz = lightLux / 1000.0;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  float soundVoltage = analogRead(SOUND_PIN); 
+  float soundVoltage = analogRead(SOUND_PIN);
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -148,9 +152,8 @@ void logSensorDataToSD() {
   float latitude = gps.location.isValid() ? gps.location.lat() : 0;
   float longitude = gps.location.isValid() ? gps.location.lng() : 0;
 
-  // Prepare time and date strings
-  char timeStr[10] = "00:00:00";  // Default if no GPS data
-  char dateStr[11] = "00-00-0000"; // Default if no GPS data
+  char timeStr[10] = "00:00:00";
+  char dateStr[11] = "00-00-0000";
 
   if (gps.time.isValid()) {
     sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
@@ -160,10 +163,8 @@ void logSensorDataToSD() {
     sprintf(dateStr, "%02d-%02d-%04d", gps.date.day(), gps.date.month(), gps.date.year());
   }
 
-  // SD Card logging
   myFile = SD.open(fileName, FILE_WRITE);
   if (myFile) {
-    // Print data to the file
     myFile.seek(myFile.size());
     myFile.print(dateStr);
     myFile.print(" ");
@@ -189,13 +190,12 @@ void logSensorDataToSD() {
     myFile.print(",");
     myFile.println(PeopleCounter); // Log PeopleCounter to SD
 
-    myFile.close(); // Always ensure the file is closed
+    myFile.close();
     Serial.println("Data logged to SD card");
   } else {
     Serial.println("Error opening " + String(fileName));
   }
 }
-
 
 void sendDataToFirebase() {
   // Receive the current PeopleCounter from Firebase
@@ -227,22 +227,16 @@ void sendDataToFirebase() {
   firebase.setFloat("GPS/Longitude", longitude);
 }
 
-
 void updateDisplay() {
-  // Read sensor data
   int BatLife = analogRead(VOLTAGE_DIVIDER);
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  float light = analogRead(SENSOR_PIN);
-  float sound = analogRead(SOUND_PIN);
-
-  // Begin by clearing the display
+  
   display.clearDisplay();
-  display.setTextSize(1);      // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.setCursor(0, 0);     // Start at top-left corner
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
 
-  // Determine battery level in quarters
   if (BatLife >= 2445) {
     display.println("Battery level: 76% - 100%");
   } else if (BatLife >= 2283) {
@@ -253,7 +247,6 @@ void updateDisplay() {
     display.println("Battery level: 0% - 25%");
   }
 
-  // Print time from GPS
   if (gps.time.isValid()) {
     char timeStr[10];
     sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
@@ -263,12 +256,10 @@ void updateDisplay() {
     display.println("Time: No GPS Data");
   }
 
-  // Print temperature
   display.print("Temp: ");
   display.print(temperature, 1);
   display.println(" F");
 
-  // Print humidity
   display.print("Humidity: ");
   display.print(humidity, 1);
   display.println("%");
@@ -276,56 +267,43 @@ void updateDisplay() {
   display.print("People: ");
   display.println(PeopleCounter);
 
-  if(WiFi.status() == WL_CONNECTED){
+  if (WiFi.status() == WL_CONNECTED) {
     display.println("WiFi connected");
-  }
-  else{
+  } else {
     display.println("WiFi connection failed");
   }
 
-  
-
-  // Display the content
   display.display();
 }
 
 void loop() {
-
-  unsigned long currentMillis = millis(); // Get current time
+  unsigned long currentMillis = millis();
 
   // Sensor 1 - Record data every 5 seconds
   if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
     previousMillisSensor1 = currentMillis;  // Update last read time
-     // Update the display and log sensor data to SD card
-    updateDisplay();
-    logSensorDataToSD();
+    updateDisplay();  // Update the OLED display
+    logSensorDataToSD();  // Log data to SD card
 
     // If WiFi is connected, send data to Firebase
     if (WiFi.status() == WL_CONNECTED) {
       sendDataToFirebase();
+    } else {
+      connectToWiFi();  // Attempt to reconnect to WiFi
     }
   }
- 
-  // Read the state of the pushbuttons
-  button1_State = digitalRead(PEOPLE_COUNT_UP);
-  button2_State = digitalRead(PEOPLE_COUNT_DOWN);
 
-  // Check if button 1 is pressed and the prestate is 0 (button was not previously pressed)
-  if (button1_State == HIGH && prestate == 0) {
-    PeopleCounter++;  // Increment the counter
-    userChangedCounter = true;
-    prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
+  // Handle increment button press
+  if (button1Pressed) {
+    PeopleCounter++;  // Increment PeopleCounter
+    button1Pressed = false;  // Reset the flag
+    userChangedCounter = true;  // Set the flag that the user manually changed the counter
   }
 
-  // Check if button 2 is pressed and the prestate is 0
-  else if (button2_State == HIGH && prestate == 0) {
-    PeopleCounter--;  // Decrement the counter
-    userChangedCounter = true;
-    prestate = 1;  // Set prestate to 1 to avoid counting multiple times for a single press
-  }
-
-  // Reset the prestate if both buttons are not pressed
-  else if (button1_State == LOW && button2_State == LOW) {
-    prestate = 0;
+  // Handle decrement button press
+  if (button2Pressed) {
+    PeopleCounter--;  // Decrement PeopleCounter
+    button2Pressed = false;  // Reset the flag
+    userChangedCounter = true;  // Set the flag that the user manually changed the counter
   }
 }
