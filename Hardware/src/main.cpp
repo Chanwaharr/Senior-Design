@@ -51,7 +51,7 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 500;  // 500 milliseconds (0.5 seconds)
+const unsigned long sensor1Interval = 5000;  // 500 milliseconds (0.5 seconds)
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
@@ -78,6 +78,21 @@ void IRAM_ATTR handleButton2Press() {
     button2Pressed = true;  // Set the flag
     lastInterruptTime = interruptTime;
   }
+}
+
+// Convert 24-hour time to 12-hour time with AM/PM
+String formatTime12Hour(int hour, int minute, int second) {
+  String period = "AM";
+  if (hour >= 12) {
+    period = "PM";
+    if (hour > 12) hour -= 12;  // Convert 24-hour time to 12-hour time
+  } else if (hour == 0) {
+    hour = 12;  // Midnight should be 12 AM
+  }
+  
+  char timeStr[12];
+  sprintf(timeStr, "%02d:%02d:%02d %s", hour, minute, second, period.c_str());
+  return String(timeStr);
 }
 
 void getLatLongFromGoogle() {
@@ -178,7 +193,7 @@ void setup() {
   // Attempt to connect to WiFi
   connectToWiFi();
 
-  GPSSerial.begin(115200, SERIAL_8N1, RXPin, TXPin);
+  GPSSerial.begin(9600, SERIAL_8N1, RXPin, TXPin);
   dht.begin();
   initializeCard();
 
@@ -224,13 +239,16 @@ void logSensorDataToSD() {
     longitude = 0.0;
   }
 
-  char timeStr[10] = "00:00:00";
-  char dateStr[11] = "00-00-0000";
-
+  // Format time in 12-hour format
+  String formattedTime = "No GPS Time";
   if (gps.time.isValid()) {
-    sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
+    int hour = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
+    formattedTime = formatTime12Hour(hour, minute, second);
   }
 
+  char dateStr[11] = "00-00-0000";
   if (gps.date.isValid()) {
     sprintf(dateStr, "%02d-%02d-%04d", gps.date.day(), gps.date.month(), gps.date.year());
   }
@@ -240,7 +258,7 @@ void logSensorDataToSD() {
     myFile.seek(myFile.size());
     myFile.print(dateStr);
     myFile.print(" ");
-    myFile.print(timeStr);
+    myFile.print(formattedTime);
 
     myFile.print(",");
     myFile.print(latitude, 6);
@@ -321,10 +339,13 @@ void updateDisplay() {
   }
 
   if (gps.time.isValid()) {
-    char timeStr[10];
-    sprintf(timeStr, "%02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
+    int hour = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
+    String formattedTime = formatTime12Hour(hour, minute, second);
+    
     display.print("Time: ");
-    display.println(timeStr);
+    display.println(formattedTime);
   } else {
     display.println("Time: No GPS Data");
   }
