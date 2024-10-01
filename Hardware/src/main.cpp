@@ -82,6 +82,14 @@ void IRAM_ATTR handleButton2Press() {
 
 // Convert 24-hour time to 12-hour time with AM/PM
 String formatTime12Hour(int hour, int minute, int second) {
+  int timeZoneOffset = -5;
+  hour += timeZoneOffset;
+   // Adjust for wrapping around midnight (24-hour to 12-hour conversion)
+  if (hour < 0) {
+    hour += 24;  // Wrap around if negative
+  } else if (hour >= 24) {
+    hour -= 24;  // Wrap around if over 24
+  }
   String period = "AM";
   if (hour >= 12) {
     period = "PM";
