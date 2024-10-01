@@ -8,6 +8,7 @@
 #include <Adafruit_SSD1306.h>
 #include <TinyGPS++.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <ESP32Firebase.h>
 #include <TimeLib.h>
 
@@ -17,6 +18,10 @@
 #define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
 
 Firebase firebase(DATABASE_URL);
+
+// Google Geolocation API credentials
+const char* Host = "www.googleapis.com";
+String apiKey = "AIzaSyCaLUFrC5j7DYCr-jLVGfJHJDJGtpYucu8";
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -39,6 +44,10 @@ const int PEOPLE_COUNT_DOWN = 9; // Decrement push button
 
 File myFile;
 const char* fileName = "/Data.txt"; // File name
+
+// Global latitude and longitude variables
+double latitude = 0.0;
+double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
@@ -68,6 +77,61 @@ void IRAM_ATTR handleButton2Press() {
   if (interruptTime - lastInterruptTime > debounceDelay) {
     button2Pressed = true;  // Set the flag
     lastInterruptTime = interruptTime;
+  }
+}
+
+void getLatLongFromGoogle() {
+  // Scan for WiFi networks
+  int n = WiFi.scanNetworks();
+
+  if (n > 0) {
+    // Create JSON with WiFi networks
+    String jsonString = "{\"wifiAccessPoints\":[";
+    for (int i = 0; i < n; ++i) {
+      jsonString += "{";
+      jsonString += "\"macAddress\":\"" + WiFi.BSSIDstr(i) + "\",";
+      jsonString += "\"signalStrength\":" + String(WiFi.RSSI(i));
+      jsonString += "}";
+      if (i < n - 1) jsonString += ",";
+    }
+    jsonString += "]}";
+
+    // Send data to Google Geolocation API
+    WiFiClientSecure client;
+    client.setInsecure();  // No SSL certificate needed
+    if (client.connect(Host, 443)) {
+      client.println("POST /geolocation/v1/geolocate?key=" + apiKey + " HTTP/1.1");
+      client.println("Host: " + String(Host));
+      client.println("Connection: close");
+      client.println("Content-Type: application/json");
+      client.print("Content-Length: ");
+      client.println(jsonString.length());
+      client.println();
+      client.print(jsonString);
+    } else {
+      Serial.println("Failed to connect to Google API.");
+      return;
+    }
+
+    // Read the API response
+    String payload = "";
+    while (client.connected() || client.available()) {
+      if (client.available()) {
+        payload += client.readString();
+      }
+    }
+    client.stop();
+
+    // Extract latitude and longitude from the response
+    int latIndex = payload.indexOf("\"lat\":");
+    int lngIndex = payload.indexOf("\"lng\":");
+
+    if (latIndex != -1 && lngIndex != -1) {
+      latitude = payload.substring(latIndex + 6, payload.indexOf(',', latIndex)).toFloat();
+      longitude = payload.substring(lngIndex + 6, payload.indexOf(',', lngIndex)).toFloat();
+    } else {
+      Serial.println("Failed to parse latitude and longitude from Google API.");
+    }
   }
 }
 
@@ -149,8 +213,16 @@ void logSensorDataToSD() {
     }
   }
 
-  float latitude = gps.location.isValid() ? gps.location.lat() : 0;
-  float longitude = gps.location.isValid() ? gps.location.lng() : 0;
+  if (WiFi.status() == WL_CONNECTED) {
+    // GPS is not valid, try to get location from Google
+    getLatLongFromGoogle();
+  } else if (gps.location.isValid()) {
+    latitude = gps.location.lat();
+    longitude = gps.location.lng();
+  } else {
+    latitude = 0.0;
+    longitude = 0.0;
+  }
 
   char timeStr[10] = "00:00:00";
   char dateStr[11] = "00-00-0000";
@@ -170,14 +242,10 @@ void logSensorDataToSD() {
     myFile.print(" ");
     myFile.print(timeStr);
 
-    if (gps.location.isValid()) {
-      myFile.print(",");
-      myFile.print(latitude, 6);
-      myFile.print(",");
-      myFile.print(longitude, 6);
-    } else {
-      myFile.print(",No GPS Data");
-    }
+    myFile.print(",");
+    myFile.print(latitude, 6);
+    myFile.print(",");
+    myFile.print(longitude, 6);
 
     myFile.print(",");
     myFile.print(lightLux);
@@ -218,8 +286,13 @@ void sendDataToFirebase() {
   // Send other sensor data to Firebase
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  float latitude = gps.location.isValid() ? gps.location.lat() : 0;
-  float longitude = gps.location.isValid() ? gps.location.lng() : 0;
+  // Update latitude and longitude using either GPS or Google
+  if (WiFi.status() == WL_CONNECTED) {
+    getLatLongFromGoogle();  // Get from Google if WiFi is connected and GPS is not valid
+  } else if (gps.location.isValid()) {
+    latitude = gps.location.lat();
+    longitude = gps.location.lng();
+  }
 
   firebase.setFloat("Environment/Temperature", temperature);
   firebase.setFloat("Environment/Humidity", humidity);
