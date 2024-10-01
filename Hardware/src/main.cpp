@@ -11,17 +11,13 @@
 #include <WiFiClientSecure.h>
 #include <ESP32Firebase.h>
 #include <TimeLib.h>
+#include <Secrets.h> //the API's and passwords
 
-#define WIFI_SSID  "WhiteSky-332"
-#define WIFI_PASSWORD "74976532"
-#define API_KEY "AIzaSyCs7OKUVsWg3hRFSYSiHQGc5xeTp1RyTv8"
-#define DATABASE_URL "https://urban-hotspots-1-default-rtdb.firebaseio.com/"
-
-Firebase firebase(DATABASE_URL);
+Firebase firebase(FIREBASE_DATABASE_URL);
 
 // Google Geolocation API credentials
 const char* Host = "www.googleapis.com";
-String apiKey = "AIzaSyCaLUFrC5j7DYCr-jLVGfJHJDJGtpYucu8";
+String apiKey =  GOOGLE_API_KEY;
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
