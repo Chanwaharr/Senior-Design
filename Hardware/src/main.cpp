@@ -39,7 +39,7 @@ const int PEOPLE_COUNT_UP = 27; // Increment push button
 const int PEOPLE_COUNT_DOWN = 9; // Decrement push button
 
 File myFile;
-const char* fileName = "/Data.txt"; // File name
+String fileName;
 
 // Global latitude and longitude variables
 double latitude = 0.0;
@@ -154,6 +154,18 @@ void getLatLongFromGoogle() {
   }
 }
 
+String generateNewFileName() {
+  int fileIndex = 1;
+  String newFileName = "/Data" + String(fileIndex) + ".txt";
+
+  while (SD.exists(newFileName)) {
+    fileIndex++;
+    newFileName = "/Data" + String(fileIndex) + ".txt";
+  }
+
+  return newFileName;
+}
+
 void writeHeader() {
   myFile = SD.open(fileName, FILE_WRITE);
   if (myFile) {
@@ -169,6 +181,9 @@ void initializeCard() {
   while (true) {
     if (SD.begin(CS_PIN)) {
       Serial.println("Initialization done.");
+
+      //Generate new file name if the file exists
+      fileName = generateNewFileName();
       writeHeader();
       break;
     } else {
