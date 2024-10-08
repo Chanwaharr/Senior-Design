@@ -146,8 +146,8 @@ void getLatLongFromGoogle() {
     int lngIndex = payload.indexOf("\"lng\":");
 
     if (latIndex != -1 && lngIndex != -1) {
-      latitude = payload.substring(latIndex + 6, payload.indexOf(',', latIndex)).toFloat();
-      longitude = payload.substring(lngIndex + 6, payload.indexOf(',', lngIndex)).toFloat();
+      latitude = payload.substring(latIndex + 6, payload.indexOf(',', latIndex)).toDouble();
+      longitude = payload.substring(lngIndex + 6, payload.indexOf(',', lngIndex)).toDouble();
     } else {
       Serial.println("Failed to parse latitude and longitude from Google API.");
     }
