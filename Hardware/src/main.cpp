@@ -331,10 +331,12 @@ void sendDataToFirebase() {
     longitude = gps.location.lng();
   }
 
+  String latStr = String(latitude, 6);  // Convert latitude to string with 6 decimal places
+  String lngStr = String(longitude, 6); // Convert longitude to string with 6 decimal places
+  firebase.setString("GPS/Latitude", latStr);
+  firebase.setString("GPS/Longitude", lngStr);
   firebase.setFloat("Environment/Temperature", temperature);
   firebase.setFloat("Environment/Humidity", humidity);
-  firebase.setFloat("GPS/Latitude", latitude);
-  firebase.setFloat("GPS/Longitude", longitude);
 }
 
 void updateDisplay() {
