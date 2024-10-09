@@ -341,7 +341,7 @@ void sendDataToFirebase() {
 
 void updateDisplay() {
   int BatLife = analogRead(VOLTAGE_DIVIDER);
-  float voltage = (BatLife / 4095.0) * 5;
+  float voltage = (BatLife / 4095.0) * 5 * 2;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   
