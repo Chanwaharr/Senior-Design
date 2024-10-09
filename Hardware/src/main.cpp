@@ -47,7 +47,7 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 5000;  // 5 seconds
+const unsigned long sensor1Interval = 30000;  // 30 seconds
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
