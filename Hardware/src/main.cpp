@@ -341,7 +341,7 @@ void sendDataToFirebase() {
 
 void updateDisplay() {
   int BatLife = analogRead(VOLTAGE_DIVIDER);
-  float voltage = (BatLife / 4095.0) * 5 * 2;
+  float voltage = (BatLife / 4095.0) * 3.3 * 2;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   
@@ -350,11 +350,11 @@ void updateDisplay() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
 
-  if (BatLife >= 4.75) {
+  if (BatLife >= 4) {
     display.println("Battery level: 76% - 100%");
-  } else if (BatLife >= 4.5) {
+  } else if (BatLife >= 3.8) {
     display.println("Battery level: 51% - 75%");
-  } else if (BatLife >= 4.25) {
+  } else if (BatLife >= 3.6) {
     display.println("Battery level: 26% - 50%");
   } else {
     display.println("Battery level: 0% - 25%");
