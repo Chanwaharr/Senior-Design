@@ -395,10 +395,17 @@ void updateDisplay() {
 void loop() {
   unsigned long currentMillis = millis();
 
-  // Sensor 1 - Record data every 5 seconds
+  // Update display every 2 seconds
+  static unsigned long previousMillisDisplay = 0;
+  const unsigned long displayInterval = 2000;  // 2 seconds
+  if (currentMillis - previousMillisDisplay >= displayInterval) {
+    previousMillisDisplay = currentMillis;  // Update last display update time
+    updateDisplay();  // Update the OLED display
+  }
+
+  // Sensor 1 - Record data every 30 seconds
   if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
     previousMillisSensor1 = currentMillis;  // Update last read time
-    updateDisplay();  // Update the OLED display
     logSensorDataToSD();  // Log data to SD card
 
     // If WiFi is connected, send data to Firebase
