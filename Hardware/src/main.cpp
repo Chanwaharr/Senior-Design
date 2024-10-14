@@ -238,7 +238,8 @@ void logSensorDataToSD() {
   float lux = microamps * 2.0;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  float soundVoltage = analogRead(SOUND_PIN);
+  float soundVoltage = analogRead(SOUND_PIN) * 3.3 / 4095;
+  float soundDecibels = 20 * log10(soundVoltage / 3.3);
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -293,7 +294,7 @@ void logSensorDataToSD() {
     myFile.print(",");
     myFile.print(humidity, 2);
     myFile.print(",");
-    myFile.print(soundVoltage);
+    myFile.print(soundDecibels);
     myFile.print(",");
     myFile.println(PeopleCounter); // Log PeopleCounter to SD
 
