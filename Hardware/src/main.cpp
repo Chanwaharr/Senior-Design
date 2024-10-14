@@ -32,7 +32,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 DHT dht(13, DHT22); // Temperature/humidity sensor
 const int CS_PIN = 5; // SD card pin
-const int SENSOR_PIN = 26; // Light sensor
+const int SENSOR_PIN = 39; // Light sensor
 const int SOUND_PIN = 36; // Sound sensor
 const int VOLTAGE_DIVIDER = 34; // Voltage divider for battery life
 const int PEOPLE_COUNT_UP = 27; // Increment push button
@@ -232,8 +232,10 @@ void setup() {
 }
 
 void logSensorDataToSD() {
-  int lightLux = digitalRead(SENSOR_PIN);
-  float lightHz = lightLux;
+  float voltage = analogRead(SENSOR_PIN) * 3.3 / 4095;
+  float amps = voltage / 10000.0;
+  float microamps = amps * 1000000;
+  float lux = microamps * 2.0;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN);
@@ -285,7 +287,7 @@ void logSensorDataToSD() {
     myFile.print(longitude, 6);
 
     myFile.print(",");
-    myFile.print(lightLux);
+    myFile.print(lux);
     myFile.print(",");
     myFile.print(temperature, 2);
     myFile.print(",");
