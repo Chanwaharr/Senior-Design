@@ -47,7 +47,7 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 3000;  // 30 seconds
+const unsigned long sensor1Interval = 30000;  // 30 seconds
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
@@ -399,23 +399,22 @@ void loop() {
 
   // Update display every 2 seconds
   static unsigned long previousMillisDisplay = 0;
-  const unsigned long displayInterval = 2000;  // 2 seconds
+  const unsigned long displayInterval = 1000;  // 1 seconds
   if (currentMillis - previousMillisDisplay >= displayInterval) {
     previousMillisDisplay = currentMillis;  // Update last display update time
     updateDisplay();  // Update the OLED display
-  }
-
-  // Sensor 1 - Record data every 30 seconds
-  if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
-    previousMillisSensor1 = currentMillis;  // Update last read time
-    logSensorDataToSD();  // Log data to SD card
-
     // If WiFi is connected, send data to Firebase
     if (WiFi.status() == WL_CONNECTED) {
       sendDataToFirebase();
     } else {
       connectToWiFi();  // Attempt to reconnect to WiFi
     }
+  }
+
+  // Sensor 1 - Record data every 30 seconds
+  if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
+    previousMillisSensor1 = currentMillis;  // Update last read time
+    logSensorDataToSD();  // Log data to SD card
   }
 
   // Handle increment button press
