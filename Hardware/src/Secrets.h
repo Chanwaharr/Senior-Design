@@ -2,8 +2,8 @@
 #define SECRETS_H
 
 // WiFi credentials
-#define WIFI_SSID  "WhiteSky-332"
-#define WIFI_PASSWORD "74976532"
+#define WIFI_SSID  "Sergio"
+#define WIFI_PASSWORD "Welcome123"
 
 // Google Geolocation API Key
 #define GOOGLE_API_KEY "AIzaSyCaLUFrC5j7DYCr-jLVGfJHJDJGtpYucu8"

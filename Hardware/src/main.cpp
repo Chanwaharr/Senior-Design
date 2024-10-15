@@ -254,8 +254,8 @@ void logSensorDataToSD() {
     // GPS is not valid, try to get location from Google
     getLatLongFromGoogle();
   } else if (gps.location.isValid()) {
-    latitude = gps.location.lat();
-    longitude = gps.location.lng();
+    latitude = (gps.location.lat(),6);
+    longitude = (gps.location.lng(),6);
   } else {
     latitude = 0.0;
     longitude = 0.0;
@@ -288,9 +288,9 @@ void logSensorDataToSD() {
     myFile.print(formattedTime);
 
     myFile.print(",");
-    myFile.print(latitude, 6);
+    myFile.print(latitude);
     myFile.print(",");
-    myFile.print(longitude, 6);
+    myFile.print(longitude);
 
     myFile.print(",");
     myFile.print(lux);
@@ -359,13 +359,13 @@ void updateDisplay() {
   display.setCursor(0, 0);
 
   if (BatLife >= 4) {
-    display.println("Battery level: 76% - 100%");
+    display.println("Battery: 76% - 100%");
   } else if (BatLife >= 3.8) {
-    display.println("Battery level: 51% - 75%");
+    display.println("Battery: 51% - 75%");
   } else if (BatLife >= 3.6) {
-    display.println("Battery level: 26% - 50%");
+    display.println("Battery: 26% - 50%");
   } else {
-    display.println("Battery level: 0% - 25%");
+    display.println("Battery: 0% - 25%");
   }
 
   // Check if connected to WiFi
