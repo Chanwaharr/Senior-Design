@@ -284,7 +284,7 @@ void logSensorDataToSD() {
   if (myFile) {
     myFile.seek(myFile.size());
     myFile.print(dateStr);
-    myFile.print(" ");
+    myFile.print(",");
     myFile.print(formattedTime);
 
     myFile.print(",");
