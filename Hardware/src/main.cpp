@@ -261,9 +261,14 @@ void logSensorDataToSD() {
     longitude = 0.0;
   }
 
-  // Format time in 12-hour format
-  String formattedTime = "No GPS Time";
-  if (gps.time.isValid()) {
+  // Use WiFi time if connected, else fallback to GPS time
+  String formattedTime = "No Time Data";
+  if (WiFi.status() == WL_CONNECTED) {
+    formattedTime = firebase.getString("UpdatedTime");  // Get time from Firebase
+    if (formattedTime == "") {
+      formattedTime = "Firebase Error";  // Handle potential error
+    }
+  } else if (gps.time.isValid()) {
     int hour = gps.time.hour();
     int minute = gps.time.minute();
     int second = gps.time.second();
@@ -347,7 +352,7 @@ void updateDisplay() {
   float voltage = (BatLife / 4095.0) * 3.3 * 2;
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
-  
+
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -363,16 +368,29 @@ void updateDisplay() {
     display.println("Battery level: 0% - 25%");
   }
 
-  if (gps.time.isValid()) {
-    int hour = gps.time.hour();
-    int minute = gps.time.minute();
-    int second = gps.time.second();
-    String formattedTime = formatTime12Hour(hour, minute, second);
-    
-    display.print("Time: ");
-    display.println(formattedTime);
+  // Check if connected to WiFi
+  if (WiFi.status() == WL_CONNECTED) {
+    // Get the time from Firebase
+    String firebaseTime = firebase.getString("UpdatedTime");
+    if (firebaseTime != "") {
+      display.print("Time: ");
+      display.println(firebaseTime);
+    } else {
+      display.println("Time: Firebase Error");
+    }
   } else {
-    display.println("Time: No GPS Data");
+    // Fall back to GPS time if WiFi is not connected
+    if (gps.time.isValid()) {
+      int hour = gps.time.hour();
+      int minute = gps.time.minute();
+      int second = gps.time.second();
+      String formattedTime = formatTime12Hour(hour, minute, second);
+
+      display.print("Time: ");
+      display.println(formattedTime);
+    } else {
+      display.println("Time: No GPS Data");
+    }
   }
 
   display.print("Temp: ");
@@ -382,7 +400,7 @@ void updateDisplay() {
   display.print("Humidity: ");
   display.print(humidity, 1);
   display.println("%");
-  
+
   display.print("People: ");
   display.println(PeopleCounter);
 
