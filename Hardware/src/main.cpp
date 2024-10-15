@@ -239,7 +239,7 @@ void logSensorDataToSD() {
   float temperature = dht.readTemperature(true);
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN) * 3.3 / 4095;
-  float soundDecibels = 20 * log10(soundVoltage / 3.3);
+  float soundDecibels = 20 * log10(soundVoltage / 0.001);
 
   boolean newData = false;
   for (unsigned long start = millis(); millis() - start < 1000;) {
