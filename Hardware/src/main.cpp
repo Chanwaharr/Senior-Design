@@ -39,7 +39,7 @@ const int PEOPLE_COUNT_UP = 27; // Increment push button
 const int PEOPLE_COUNT_DOWN = 9; // Decrement push button
 
 File myFile;
-String fileName;
+String fileName = "/Data.txt";
 
 // Global latitude and longitude variables
 double latitude = 0.0;
@@ -47,11 +47,11 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 30000;  // 30 seconds
+const unsigned long sensor1Interval = 25000;  // 25 seconds
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
-const unsigned long debounceDelay = 50;  // 50 milliseconds debounce delay
+const unsigned long debounceDelay = 100;  // 100 milliseconds debounce delay
 volatile unsigned long lastInterruptTime = 0;  // Last time an interrupt occurred
 
 // Flags for debouncing using interrupts
@@ -154,21 +154,9 @@ void getLatLongFromGoogle() {
   }
 }
 
-String generateNewFileName() {
-  int fileIndex = 1;
-  String newFileName = "/Data" + String(fileIndex) + ".txt";
-
-  while (SD.exists(newFileName)) {
-    fileIndex++;
-    newFileName = "/Data" + String(fileIndex) + ".txt";
-  }
-
-  return newFileName;
-}
-
 void writeHeader() {
   myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile) {
+  if (myFile.size() == 0) {
     myFile.println("Date,Time,Lat,Long,Light,Temp,Humidity,Sound,People");
     myFile.close();
   } else {
@@ -181,9 +169,6 @@ void initializeCard() {
   while (true) {
     if (SD.begin(CS_PIN)) {
       Serial.println("Initialization done.");
-
-      //Generate new file name if the file exists
-      fileName = generateNewFileName();
       writeHeader();
       break;
     } else {
@@ -236,7 +221,7 @@ void logSensorDataToSD() {
   float amps = voltage / 10000.0;
   float microamps = amps * 1000000;
   float lux = microamps * 2.0;
-  float temperature = dht.readTemperature(true);
+  float temperature = dht.readTemperature(true) - 2.0;
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN) * 3.3 / 4095;
   float soundDecibels = 20 * log10(soundVoltage / 0.001);
@@ -254,8 +239,8 @@ void logSensorDataToSD() {
     // GPS is not valid, try to get location from Google
     getLatLongFromGoogle();
   } else if (gps.location.isValid()) {
-    latitude = (gps.location.lat(),6);
-    longitude = (gps.location.lng(),6);
+    latitude = (gps.location.lat());
+    longitude = (gps.location.lng());
   } else {
     latitude = 0.0;
     longitude = 0.0;
@@ -280,7 +265,14 @@ void logSensorDataToSD() {
     sprintf(dateStr, "%02d-%02d-%04d", gps.date.day(), gps.date.month(), gps.date.year());
   }
 
-  myFile = SD.open(fileName, FILE_WRITE);
+  Serial.print("Free heap memory before: ");
+  Serial.println(ESP.getFreeHeap());
+
+  // Reinitialize the SD card before logging data
+  if (SD.begin(CS_PIN)) {
+    Serial.println("SD card reinitialized successfully.");
+
+    myFile = SD.open(fileName, FILE_WRITE);
   if (myFile) {
     myFile.seek(myFile.size());
     myFile.print(dateStr);
@@ -288,9 +280,9 @@ void logSensorDataToSD() {
     myFile.print(formattedTime);
 
     myFile.print(",");
-    myFile.print(latitude);
+    myFile.print(latitude,6);
     myFile.print(",");
-    myFile.print(longitude);
+    myFile.print(longitude,6);
 
     myFile.print(",");
     myFile.print(lux);
@@ -303,11 +295,16 @@ void logSensorDataToSD() {
     myFile.print(",");
     myFile.println(PeopleCounter); // Log PeopleCounter to SD
 
+    // Flush the file to ensure data is written to the SD card
+    myFile.flush();
+
     myFile.close();
     Serial.println("Data logged to SD card");
+    SD.end();
   } else {
     Serial.println("Error opening " + String(fileName));
   }
+}
 }
 
 void sendDataToFirebase() {
