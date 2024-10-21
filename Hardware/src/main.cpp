@@ -47,11 +47,11 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 25000;  // 25 seconds
+const unsigned long sensor1Interval = 250000;  // 25 seconds
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
-const unsigned long debounceDelay = 100;  // 100 milliseconds debounce delay
+const unsigned long debounceDelay = 0;  // 100 milliseconds debounce delay
 volatile unsigned long lastInterruptTime = 0;  // Last time an interrupt occurred
 
 // Flags for debouncing using interrupts
@@ -62,7 +62,7 @@ volatile bool button2Pressed = false;
 void IRAM_ATTR handleButton1Press() {
   unsigned long interruptTime = millis();
   if (interruptTime - lastInterruptTime > debounceDelay) {
-    button1Pressed = true;  // Set the flag
+    PeopleCounter++;  // Set the flag
     lastInterruptTime = interruptTime;
   }
 }
@@ -71,7 +71,7 @@ void IRAM_ATTR handleButton1Press() {
 void IRAM_ATTR handleButton2Press() {
   unsigned long interruptTime = millis();
   if (interruptTime - lastInterruptTime > debounceDelay) {
-    button2Pressed = true;  // Set the flag
+    PeopleCounter--;  // Set the flag
     lastInterruptTime = interruptTime;
   }
 }
@@ -436,14 +436,14 @@ void loop() {
   // Handle increment button press
   if (button1Pressed) {
     PeopleCounter++;  // Increment PeopleCounter
-    button1Pressed = false;  // Reset the flag
+    lastInterruptTime = millis();  // Reset the flag
     userChangedCounter = true;  // Set the flag that the user manually changed the counter
   }
 
   // Handle decrement button press
   if (button2Pressed) {
     PeopleCounter--;  // Decrement PeopleCounter
-    button2Pressed = false;  // Reset the flag
+    lastInterruptTime = millis();  // Reset the flag
     userChangedCounter = true;  // Set the flag that the user manually changed the counter
   }
 }
