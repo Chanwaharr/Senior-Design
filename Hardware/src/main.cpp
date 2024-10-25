@@ -39,7 +39,8 @@ const int PEOPLE_COUNT_UP = 27; // Increment push button
 const int PEOPLE_COUNT_DOWN = 9; // Decrement push button
 
 File myFile;
-String fileName = "/Data.txt";
+String fileName;
+int fileIndex = 1;
 
 // Global latitude and longitude variables
 double latitude = 0.0;
@@ -156,7 +157,7 @@ void getLatLongFromGoogle() {
 
 void writeHeader() {
   myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile.size() == 0) {
+  if (myFile && myFile.size() == 0) {
     myFile.println("Date,Time,Lat,Long,Light,Temp,Humidity,Sound,People");
     myFile.close();
   } else {
@@ -165,16 +166,24 @@ void writeHeader() {
 }
 
 void initializeCard() {
-  Serial.print("Beginning initialization of SD card: ");
+  Serial.println("Initializing SD card...");
+  while (!SD.begin(CS_PIN)) {
+    Serial.println("SD card initialization failed, retrying...");
+    delay(1000);  // Retry every second
+  }
+  Serial.println("SD card initialized.");
+}
+
+void findNextFileName() {
+  // Check for existing file and increment the index if it exists
   while (true) {
-    if (SD.begin(CS_PIN)) {
-      Serial.println("Initialization done.");
-      writeHeader();
+    fileName = "/Data" + String(fileIndex) + ".txt";
+    if (!SD.exists(fileName)) {
+      // File doesn't exist, so we can use this filename
+      Serial.println("Using file: " + fileName);
       break;
-    } else {
-      Serial.println("Initialization failed, retrying...");
-      delay(1000);
     }
+    fileIndex++;  // File exists, so increment index and check again
   }
 }
 
@@ -201,11 +210,9 @@ void setup() {
   dht.begin();
   initializeCard();
 
-  if (SD.exists(fileName)) {
-    Serial.println("\nFile exists. Will append to it.\n");
-  } else {
-    writeHeader();
-  }
+  // Find the next available file name and write the header
+  findNextFileName();
+  writeHeader();
 
   // Set up pins and attach interrupts
   pinMode(PEOPLE_COUNT_UP, INPUT);

@@ -2,8 +2,8 @@
 #define SECRETS_H
 
 // WiFi credentials
-#define WIFI_SSID  "Jay-iphone-14-pro"
-#define WIFI_PASSWORD "tXY6-zT8X-0E7N-zcx7"
+#define WIFI_SSID  "WhiteSky-332"
+#define WIFI_PASSWORD "74976532"
 
 // Google Geolocation API Key
 #define GOOGLE_API_KEY "AIzaSyCaLUFrC5j7DYCr-jLVGfJHJDJGtpYucu8"
