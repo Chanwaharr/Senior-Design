@@ -48,7 +48,7 @@ double longitude = 0.0;
 
 // Global counter for people count
 volatile int PeopleCounter = 0;  // Use volatile because it's modified in an ISR
-const unsigned long sensor1Interval = 250000;  // 25 seconds
+const unsigned long sensor1Interval = 25000;  // 25 seconds
 unsigned long previousMillisSensor1 = 0;    // Store last time sensor1 was read
 bool userChangedCounter = false;            // Flag to track if the user changed the PeopleCounter
 // Debounce time
@@ -64,6 +64,7 @@ void IRAM_ATTR handleButton1Press() {
   unsigned long interruptTime = millis();
   if (interruptTime - lastInterruptTime > debounceDelay) {
     PeopleCounter++;  // Set the flag
+    userChangedCounter = true;
     lastInterruptTime = interruptTime;
   }
 }
@@ -73,6 +74,7 @@ void IRAM_ATTR handleButton2Press() {
   unsigned long interruptTime = millis();
   if (interruptTime - lastInterruptTime > debounceDelay) {
     PeopleCounter--;  // Set the flag
+    userChangedCounter = true;
     lastInterruptTime = interruptTime;
   }
 }
@@ -157,7 +159,7 @@ void getLatLongFromGoogle() {
 
 void writeHeader() {
   myFile = SD.open(fileName, FILE_WRITE);
-  if (myFile && myFile.size() == 0) {
+  if (myFile) {
     myFile.println("Date,Time,Lat,Long,Light,Temp,Humidity,Sound,People");
     myFile.close();
   } else {
@@ -426,17 +428,17 @@ void loop() {
   if (currentMillis - previousMillisDisplay >= displayInterval) {
     previousMillisDisplay = currentMillis;  // Update last display update time
     updateDisplay();  // Update the OLED display
+  }
+
+  // Sensor 1 - Record data every 30 seconds
+  if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
+    previousMillisSensor1 = currentMillis;  // Update last read time
     // If WiFi is connected, send data to Firebase
     if (WiFi.status() == WL_CONNECTED) {
       sendDataToFirebase();
     } else {
       connectToWiFi();  // Attempt to reconnect to WiFi
     }
-  }
-
-  // Sensor 1 - Record data every 30 seconds
-  if (currentMillis - previousMillisSensor1 >= sensor1Interval) {
-    previousMillisSensor1 = currentMillis;  // Update last read time
     logSensorDataToSD();  // Log data to SD card
   }
 
