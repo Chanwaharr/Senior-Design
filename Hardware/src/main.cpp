@@ -230,7 +230,7 @@ void logSensorDataToSD() {
   float amps = voltage / 10000.0;
   float microamps = amps * 1000000;
   float lux = microamps * 2.0;
-  float temperature = dht.readTemperature(true) - 2.0;
+  float temperature = dht.readTemperature(true) - 4.0;
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN) * 3.3 / 4095;
   float soundDecibels = 20 * log10(soundVoltage / 0.001);
@@ -356,7 +356,7 @@ void sendDataToFirebase() {
 void updateDisplay() {
   int BatLife = analogRead(VOLTAGE_DIVIDER);
   float voltage = (BatLife / 4095.0) * 3.3 * 2;
-  float temperature = dht.readTemperature(true);
+  float temperature = dht.readTemperature(true) - 4.0;
   float humidity = dht.readHumidity();
 
   display.clearDisplay();
