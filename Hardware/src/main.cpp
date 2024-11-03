@@ -81,7 +81,7 @@ void IRAM_ATTR handleButton2Press() {
 
 // Convert 24-hour time to 12-hour time with AM/PM
 String formatTime12Hour(int hour, int minute, int second) {
-  int timeZoneOffset = -5;
+  int timeZoneOffset = -6;
   hour += timeZoneOffset;
    // Adjust for wrapping around midnight (24-hour to 12-hour conversion)
   if (hour < 0) {
@@ -227,7 +227,7 @@ void logSensorDataToSD() {
 
   char dateStr[11] = "00-00-0000";
   if (gps.date.isValid()) {
-    sprintf(dateStr, "%02d-%02d-%04d", gps.date.day(), gps.date.month(), gps.date.year());
+    sprintf(dateStr, "%02d-%02d-%04d", gps.date.month(), gps.date.day(), gps.date.year());
   }
 
   Serial.print("Free heap memory before: ");
