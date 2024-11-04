@@ -175,7 +175,7 @@ void logSensorDataToSD() {
   float voltage = analogRead(SENSOR_PIN) * 3.3 / 4095;
   float amps = voltage / 10000.0;
   float microamps = amps * 1000000;
-  float lux = (microamps * 2.0) - 200.0;
+  float lux = (microamps * 2.0);
   float temperature = dht.readTemperature(true) - 4.0;
   float humidity = dht.readHumidity();
   float soundVoltage = analogRead(SOUND_PIN) * 3.3 / 4095;
