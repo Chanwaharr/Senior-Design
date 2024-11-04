@@ -309,14 +309,28 @@ void updateDisplay() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
 
-  if (BatLife >= 4) {
-    display.println("Battery: 76% - 100%");
+  if (BatLife >= 4.2) {
+    display.println("Battery: 100%");
+  } else if (BatLife >= 4.1) {
+      display.println("Battery: 90%");
+  } else if (BatLife >= 4.0) {
+      display.println("Battery: 80%");
+  } else if (BatLife >= 3.9) {
+      display.println("Battery: 70%");
   } else if (BatLife >= 3.8) {
-    display.println("Battery: 51% - 75%");
+      display.println("Battery: 60%");
+  } else if (BatLife >= 3.7) {
+      display.println("Battery: 50%");
   } else if (BatLife >= 3.6) {
-    display.println("Battery: 26% - 50%");
+      display.println("Battery: 40%");
+  } else if (BatLife >= 3.5) {
+      display.println("Battery: 30%");
+  } else if (BatLife >= 3.4) {
+      display.println("Battery: 20%");
+  } else if (BatLife >= 3.3) {
+      display.println("Battery: 10%");
   } else {
-    display.println("Battery: 0% - 25%");
+      display.println("Battery: 0%");
   }
 
   // Check if connected to WiFi
